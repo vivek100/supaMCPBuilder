@@ -1,6 +1,6 @@
 {
   "name": "supamcpbuilder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Runtime-configurable MCP server for Supabase databases with inline JSON configuration support",
   "main": "dist/index.js",
