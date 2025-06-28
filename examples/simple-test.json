@@ -1,0 +1,18 @@
+{
+  "tools": [
+    {
+      "name": "test-tool",
+      "description": "Simple test tool",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "action": {
+        "type": "select",
+        "table": "projects",
+        "columns": ["id", "name"],
+        "limit": 5
+      }
+    }
+  ]
+} 

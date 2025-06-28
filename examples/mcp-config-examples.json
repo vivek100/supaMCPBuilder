@@ -1,0 +1,183 @@
+{
+  "cursor_mcp_config": {
+    "description": "Example configuration for Cursor IDE",
+    "file_location": "~/.cursor/mcp.json",
+    "config": {
+      "mcpServers": {
+        "supamcpbuilder": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "supamcpbuilder",
+            "--url", "https://your-project.supabase.co",
+            "--anon-key", "your-anon-key-here",
+            "--email", "your-email@example.com",
+            "--password", "your-password",
+            "--tools-json-base64", "W3sibmFtZSI6Imxpc3QtdXNlcnMiLCJkZXNjcmlwdGlvbiI6Ikxpc3QgYWxsIHVzZXJzIGZyb20gdGhlIHVzZXJzIHRhYmxlIiwicGFyYW1ldGVycyI6eyJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJsaW1pdCI6eyJ0eXBlIjoibnVtYmVyIiwiZGVzY3JpcHRpb24iOiJOdW1iZXIgb2YgdXNlcnMgdG8gcmV0dXJuIiwiZGVmYXVsdCI6MTB9fX0sImFjdGlvbiI6eyJ0eXBlIjoic2VsZWN0IiwidGFibGUiOiJ1c2VycyIsImNvbHVtbnMiOlsiaWQiLCJuYW1lIiwiZW1haWwiXSwibGltaXQiOiJ7e2xpbWl0fX0ifX1d"
+          ]
+        }
+      }
+    }
+  },
+  "claude_desktop_config": {
+    "description": "Example configuration for Claude Desktop",
+    "file_location": "~/Library/Application Support/Claude/config.json (macOS) or %APPDATA%/Claude/config.json (Windows)",
+    "config": {
+      "mcpServers": {
+        "supamcpbuilder": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "supamcpbuilder",
+            "--url", "https://your-project.supabase.co",
+            "--anon-key", "your-anon-key-here",
+            "--email", "your-email@example.com",
+            "--password", "your-password",
+            "--config-path", "/path/to/your/tools-config.json"
+          ]
+        }
+      }
+    }
+  },
+  "local_installation_config": {
+    "description": "Configuration using globally installed package",
+    "install_command": "npm install -g supamcpbuilder",
+    "config": {
+      "mcpServers": {
+        "supamcpbuilder": {
+          "command": "supamcpbuilder",
+          "args": [
+            "--url", "https://your-project.supabase.co",
+            "--anon-key", "your-anon-key-here",
+            "--email", "your-email@example.com",
+            "--password", "your-password",
+            "--tools-json-base64", "YOUR_BASE64_ENCODED_TOOLS"
+          ]
+        }
+      }
+    }
+  },
+  "environment_variables_config": {
+    "description": "Configuration using environment variables",
+    "environment_setup": {
+      "SUPABASE_URL": "https://your-project.supabase.co",
+      "SUPABASE_ANON_KEY": "your-anon-key-here",
+      "SUPABASE_EMAIL": "your-email@example.com",
+      "SUPABASE_PASSWORD": "your-password"
+    },
+    "config": {
+      "mcpServers": {
+        "supamcpbuilder": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "supamcpbuilder",
+            "--config-path", "/path/to/your/tools-config.json"
+          ],
+          "env": {
+            "SUPABASE_URL": "https://your-project.supabase.co",
+            "SUPABASE_ANON_KEY": "your-anon-key-here",
+            "SUPABASE_EMAIL": "your-email@example.com",
+            "SUPABASE_PASSWORD": "your-password"
+          }
+        }
+      }
+    }
+  },
+  "sample_tools_config": {
+    "description": "Sample tools configuration file",
+    "file_name": "tools-config.json",
+    "content": [
+      {
+        "name": "list-users",
+        "description": "List all users from the users table",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "description": "Number of users to return",
+              "default": 10
+            },
+            "offset": {
+              "type": "number",
+              "description": "Number of users to skip",
+              "default": 0
+            }
+          }
+        },
+        "action": {
+          "type": "select",
+          "table": "users",
+          "columns": ["id", "name", "email", "created_at"],
+          "limit": "{{limit}}",
+          "offset": "{{offset}}",
+          "orderBy": [{"column": "created_at", "direction": "desc"}]
+        }
+      },
+      {
+        "name": "create-user",
+        "description": "Create a new user",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "User's full name"
+            },
+            "email": {
+              "type": "string",
+              "description": "User's email address"
+            }
+          },
+          "required": ["name", "email"]
+        },
+        "action": {
+          "type": "insert",
+          "table": "users",
+          "values": {
+            "name": "{{name}}",
+            "email": "{{email}}",
+            "created_at": "now()"
+          },
+          "returning": ["id", "name", "email"]
+        }
+      },
+      {
+        "name": "update-user",
+        "description": "Update user information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "User ID"
+            },
+            "name": {
+              "type": "string",
+              "description": "Updated name"
+            },
+            "email": {
+              "type": "string",
+              "description": "Updated email"
+            }
+          },
+          "required": ["id"]
+        },
+        "action": {
+          "type": "update",
+          "table": "users",
+          "values": {
+            "name": "{{name}}",
+            "email": "{{email}}",
+            "updated_at": "now()"
+          },
+          "filters": {
+            "id": "{{id}}"
+          },
+          "returning": ["id", "name", "email", "updated_at"]
+        }
+      }
+    ]
+  }
+} 

@@ -1,0 +1,76 @@
+{
+  "tools": [
+    {
+      "name": "list-records",
+      "description": "List records from any table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string",
+            "description": "Name of the table to query"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of records to return",
+            "default": 10
+          }
+        },
+        "required": ["table"]
+      },
+      "action": {
+        "type": "select",
+        "table": "{{table}}",
+        "limit": "{{limit}}"
+      }
+    },
+    {
+      "name": "create-record",
+      "description": "Create a new record in any table",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string",
+            "description": "Name of the table"
+          },
+          "data": {
+            "type": "object",
+            "description": "Record data as key-value pairs"
+          }
+        },
+        "required": ["table", "data"]
+      },
+      "action": {
+        "type": "insert",
+        "table": "{{table}}",
+        "values": "{{data}}",
+        "returning": ["*"]
+      }
+    },
+    {
+      "name": "call-function",
+      "description": "Call a database function",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "function_name": {
+            "type": "string",
+            "description": "Name of the function to call"
+          },
+          "args": {
+            "type": "object",
+            "description": "Function arguments",
+            "optional": true
+          }
+        },
+        "required": ["function_name"]
+      },
+      "action": {
+        "type": "rpc",
+        "function": "{{function_name}}",
+        "args": "{{args}}"
+      }
+    }
+  ]
+} 

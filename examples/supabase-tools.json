@@ -1,0 +1,299 @@
+{
+  "tools": [
+    {
+      "name": "get-users",
+      "description": "Fetch users from the database with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of users to return",
+            "default": 10
+          },
+          "email_filter": {
+            "type": "string",
+            "description": "Filter users by email (partial match)",
+            "optional": true
+          },
+          "role": {
+            "type": "string",
+            "description": "Filter users by role",
+            "optional": true,
+            "enum": ["admin", "user", "moderator"]
+          }
+        },
+        "required": []
+      },
+      "action": {
+        "type": "select",
+        "table": "users",
+        "columns": ["id", "email", "role", "created_at", "last_login"],
+        "filters": {
+          "email": "{{email_filter}}",
+          "role": "{{role}}"
+        },
+        "limit": "{{limit}}",
+        "orderBy": [
+          { "column": "created_at", "ascending": false }
+        ]
+      }
+    },
+    {
+      "name": "create-user",
+      "description": "Create a new user account",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User's email address"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "User's full name"
+          },
+          "role": {
+            "type": "string",
+            "description": "User's role",
+            "default": "user",
+            "enum": ["admin", "user", "moderator"]
+          }
+        },
+        "required": ["email", "full_name"]
+      },
+      "action": {
+        "type": "insert",
+        "table": "users",
+        "values": {
+          "email": "{{email}}",
+          "full_name": "{{full_name}}",
+          "role": "{{role}}",
+          "created_at": "now()"
+        },
+        "returning": ["id", "email", "full_name", "role", "created_at"]
+      }
+    },
+    {
+      "name": "update-user-role",
+      "description": "Update a user's role",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user to update"
+          },
+          "new_role": {
+            "type": "string",
+            "description": "New role for the user",
+            "enum": ["admin", "user", "moderator"]
+          }
+        },
+        "required": ["user_id", "new_role"]
+      },
+      "action": {
+        "type": "update",
+        "table": "users",
+        "values": {
+          "role": "{{new_role}}",
+          "updated_at": "now()"
+        },
+        "filters": {
+          "id": "{{user_id}}"
+        },
+        "returning": ["id", "email", "role", "updated_at"]
+      }
+    },
+    {
+      "name": "create-blog-post",
+      "description": "Create a new blog post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Post title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Post content in markdown"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Post tags",
+            "optional": true
+          },
+          "published": {
+            "type": "boolean",
+            "description": "Whether to publish immediately",
+            "default": false
+          }
+        },
+        "required": ["title", "content"]
+      },
+      "action": {
+        "type": "insert",
+        "table": "posts",
+        "values": {
+          "title": "{{title}}",
+          "content": "{{content}}",
+          "tags": "{{tags}}",
+          "published": "{{published}}",
+          "created_at": "now()",
+          "updated_at": "now()"
+        },
+        "returning": ["id", "title", "published", "created_at"]
+      }
+    },
+    {
+      "name": "get-user-stats",
+      "description": "Get user statistics via stored procedure",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user"
+          },
+          "include_posts": {
+            "type": "boolean",
+            "description": "Include post statistics",
+            "default": true
+          }
+        },
+        "required": ["user_id"]
+      },
+      "action": {
+        "type": "rpc",
+        "function": "get_user_statistics",
+        "args": {
+          "p_user_id": "{{user_id}}",
+          "p_include_posts": "{{include_posts}}"
+        }
+      }
+    },
+    {
+      "name": "process-image",
+      "description": "Process an image using edge function",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "image_url": {
+            "type": "string",
+            "description": "URL of the image to process"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Image processing operation",
+            "enum": ["resize", "crop", "filter", "optimize"]
+          },
+          "width": {
+            "type": "number",
+            "description": "Target width (for resize operation)",
+            "optional": true
+          },
+          "height": {
+            "type": "number",
+            "description": "Target height (for resize operation)",
+            "optional": true
+          }
+        },
+        "required": ["image_url", "operation"]
+      },
+      "action": {
+        "type": "edgeFunction",
+        "function": "image-processor",
+        "method": "POST",
+        "body": {
+          "image_url": "{{image_url}}",
+          "operation": "{{operation}}",
+          "width": "{{width}}",
+          "height": "{{height}}"
+        },
+        "headers": {
+          "X-Custom-Header": "supabase-mcp"
+        }
+      }
+    },
+    {
+      "name": "bulk-update-posts",
+      "description": "Update multiple posts at once",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "Tag to filter posts by"
+          },
+          "published": {
+            "type": "boolean",
+            "description": "New published status"
+          }
+        },
+        "required": ["tag", "published"]
+      },
+      "action": {
+        "type": "update",
+        "table": "posts",
+        "values": {
+          "published": "{{published}}",
+          "updated_at": "now()"
+        },
+        "filters": {
+          "tags": "{{tag}}"
+        },
+        "returning": ["id", "title", "published"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "name": "user-profile",
+      "description": "Get detailed user profile information",
+      "uriTemplate": "users://{user_id}/profile",
+      "mimeType": "application/json",
+      "action": {
+        "type": "select",
+        "table": "users",
+        "columns": ["id", "email", "full_name", "role", "profile", "created_at", "last_login"],
+        "filters": {
+          "id": "{{user_id}}"
+        },
+        "single": true
+      }
+    },
+    {
+      "name": "user-posts",
+      "description": "Get all posts by a specific user",
+      "uriTemplate": "users://{user_id}/posts",
+      "mimeType": "application/json",
+      "action": {
+        "type": "select",
+        "table": "posts",
+        "columns": ["id", "title", "content", "published", "created_at", "updated_at"],
+        "filters": {
+          "author_id": "{{user_id}}"
+        },
+        "orderBy": [
+          { "column": "created_at", "ascending": false }
+        ]
+      }
+    },
+    {
+      "name": "post-detail",
+      "description": "Get detailed information about a specific post",
+      "uriTemplate": "posts://{post_id}",
+      "mimeType": "application/json",
+      "action": {
+        "type": "select",
+        "table": "posts",
+        "columns": ["id", "title", "content", "tags", "published", "created_at", "updated_at", "author_id"],
+        "filters": {
+          "id": "{{post_id}}"
+        },
+        "single": true
+      }
+    }
+  ]
+} 

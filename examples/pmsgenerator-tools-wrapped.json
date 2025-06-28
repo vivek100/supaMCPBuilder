@@ -1,0 +1,95 @@
+{
+  "tools": [
+    {
+      "name": "get-project-details",
+      "description": "Fetch complete project details by project ID. Returns project info including current version, status, and metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "description": "UUID of the project to fetch",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": ["project_id"]
+      },
+      "action": {
+        "type": "select",
+        "table": "projects",
+        "columns": ["id", "name", "description", "current_version", "last_updated", "created_at", "flow_id", "flow_status", "current_preview_url"],
+        "filters": {"id": "{{project_id}}"},
+        "single": true
+      }
+    },
+    {
+      "name": "list-user-projects",
+      "description": "List all projects for the authenticated user with pagination and filtering. Returns paginated project list with basic details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "description": "Number of projects to return (1-50)",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
+          },
+          "offset": {
+            "type": "number",
+            "description": "Number of projects to skip for pagination",
+            "default": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "action": {
+        "type": "select",
+        "table": "projects",
+        "columns": ["id", "name", "description", "current_version", "last_updated", "created_at", "flow_status"],
+        "order": [{"column": "last_updated", "direction": "desc"}],
+        "limit": "{{limit}}",
+        "offset": "{{offset}}"
+      }
+    },
+    {
+      "name": "create-project",
+      "description": "Create a new project with name and description. Returns created project with ID and initial metadata.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name (max 200 characters)",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description",
+            "maxLength": 1000
+          },
+          "current_version": {
+            "type": "string",
+            "description": "Initial version identifier",
+            "default": "1.0.0"
+          }
+        },
+        "required": ["name", "description"]
+      },
+      "action": {
+        "type": "insert",
+        "table": "projects",
+        "values": {
+          "name": "{{name}}",
+          "description": "{{description}}",
+          "current_version": "{{current_version}}",
+          "user_id": "auth.uid()",
+          "created_at": "now()",
+          "last_updated": "now()"
+        },
+        "returning": ["id", "name", "description", "current_version", "created_at", "user_id"]
+      }
+    }
+  ]
+} 
