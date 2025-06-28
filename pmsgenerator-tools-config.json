@@ -1,0 +1,704 @@
+{
+  "tools": [
+  {
+    "name": "get-project-details",
+    "description": "Fetch complete project details by project ID. Returns project info including current version, status, and metadata.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project to fetch",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "select",
+      "table": "projects",
+      "columns": ["id", "name", "description", "current_version", "last_updated", "created_at", "flow_id", "flow_status", "current_preview_url"],
+      "filters": {"id": "{{project_id}}"},
+      "single": true
+    }
+  },
+  {
+    "name": "list-user-projects",
+    "description": "List all projects for the authenticated user with pagination and filtering. Returns paginated project list with basic details.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "description": "Number of projects to return (1-50)",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50
+        },
+        "offset": {
+          "type": "number",
+          "description": "Number of projects to skip for pagination",
+          "default": 0,
+          "minimum": 0
+        }
+      }
+    },
+    "action": {
+      "type": "select",
+      "table": "projects",
+      "columns": ["id", "name", "description", "current_version", "last_updated", "created_at", "flow_status"],
+      "orderBy": [{"column": "last_updated", "direction": "desc"}],
+      "limit": "{{limit}}",
+      "offset": "{{offset}}"
+    }
+  },
+  {
+    "name": "create-project",
+    "description": "Create a new project with name and description. Returns created project with ID and initial metadata.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name (max 200 characters)",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description",
+          "maxLength": 1000
+        },
+        "current_version": {
+          "type": "string",
+          "description": "Initial version identifier",
+          "default": "1.0.0"
+        }
+      },
+      "required": ["name", "description"]
+    },
+    "action": {
+      "type": "insert",
+      "table": "projects",
+      "values": {
+        "name": "{{name}}",
+        "description": "{{description}}",
+        "current_version": "{{current_version}}",
+        "user_id": "auth.uid()",
+        "created_at": "now()",
+        "last_updated": "now()"
+      },
+      "returning": ["id", "name", "description", "current_version", "created_at", "user_id"]
+    }
+  },
+  {
+    "name": "update-project-name",
+    "description": "Update project name only. Returns updated project information.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project to update"
+        },
+        "name": {
+          "type": "string",
+          "description": "Updated project name",
+          "maxLength": 200
+        }
+      },
+      "required": ["project_id", "name"]
+    },
+    "action": {
+      "type": "update",
+      "table": "projects",
+      "values": {
+        "name": "{{name}}",
+        "last_updated": "now()"
+      },
+      "filters": {"id": "{{project_id}}"},
+      "returning": ["id", "name", "description", "current_version", "flow_status", "last_updated"]
+    }
+  },
+  {
+    "name": "update-project-description",
+    "description": "Update project description only. Returns updated project information.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string", 
+          "description": "UUID of the project to update"
+        },
+        "description": {
+          "type": "string",
+          "description": "Updated project description"
+        }
+      },
+      "required": ["project_id", "description"]
+    },
+    "action": {
+      "type": "update",
+      "table": "projects", 
+      "values": {
+        "description": "{{description}}",
+        "last_updated": "now()"
+      },
+      "filters": {"id": "{{project_id}}"},
+      "returning": ["id", "name", "description", "current_version", "flow_status", "last_updated"]
+    }
+  },
+  {
+    "name": "update-project-version",
+    "description": "Update project version and status. Returns updated project information.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project to update"
+        },
+        "current_version": {
+          "type": "string",
+          "description": "Updated version identifier"
+        },
+        "flow_status": {
+          "type": "string",
+          "description": "Updated flow status"
+        }
+      },
+      "required": ["project_id", "current_version"]
+    },
+    "action": {
+      "type": "update",
+      "table": "projects",
+      "values": {
+        "current_version": "{{current_version}}",
+        "flow_status": "{{flow_status}}",
+        "last_updated": "now()"
+      },
+      "filters": {"id": "{{project_id}}"},
+      "returning": ["id", "name", "description", "current_version", "flow_status", "last_updated"]
+    }
+  },
+  {
+    "name": "delete-project",
+    "description": "Delete a project and all associated data. Returns deleted project details for confirmation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project to delete"
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "delete",
+      "table": "projects",
+      "filters": {"id": "{{project_id}}"},
+      "returning": ["id", "name", "description", "created_at"]
+    }
+  },
+  {
+    "name": "get-project-versions",
+    "description": "List all versions for a specific project with change details. Returns version history with metadata.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Number of versions to return",
+          "default": 20,
+          "maximum": 100
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "select",
+      "table": "versions",
+      "columns": ["id", "message", "timestamp", "name", "description", "status", "preview_url", "entity_counts", "page_names"],
+      "filters": {"project_id": "{{project_id}}"},
+      "orderBy": [{"column": "timestamp", "direction": "desc"}],
+      "limit": "{{limit}}"
+    }
+  },
+  {
+    "name": "create-project-version",
+    "description": "Create a new version entry for a project with changes and metadata. Returns created version details.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "version_id": {
+          "type": "string",
+          "description": "Version identifier (e.g., '1.1.0', 'v2-beta')"
+        },
+        "message": {
+          "type": "string",
+          "description": "Version commit message",
+          "maxLength": 500
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt used for this version"
+        },
+        "changes": {
+          "type": "object",
+          "description": "JSON object describing changes made"
+        },
+        "name": {
+          "type": "string",
+          "description": "Version name/title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed version description"
+        }
+      },
+      "required": ["project_id", "version_id", "message", "prompt", "changes"]
+    },
+    "action": {
+      "type": "insert",
+      "table": "versions",
+      "values": {
+        "id": "{{version_id}}",
+        "project_id": "{{project_id}}",
+        "message": "{{message}}",
+        "prompt": "{{prompt}}",
+        "changes": "{{changes}}",
+        "name": "{{name}}",
+        "description": "{{description}}",
+        "timestamp": "now()"
+      },
+      "returning": ["id", "message", "timestamp", "name", "description", "project_id"]
+    }
+  },
+  {
+    "name": "get-project-use-cases",
+    "description": "List all use cases for a specific project. Returns detailed use case specifications.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "category": {
+          "type": "string",
+          "description": "Filter by use case category"
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "select",
+      "table": "use_cases",
+      "columns": ["id", "title", "description", "category", "goal", "roles", "requirements", "acceptance_criteria"],
+      "advancedFilters": [
+        {"column": "project_id", "operation": "eq", "value": "{{project_id}}"},
+        {"column": "category", "operation": "eq", "value": "{{category}}"}
+      ],
+      "orderBy": [{"column": "title", "direction": "asc"}]
+    }
+  },
+  {
+    "name": "create-use-case",
+    "description": "Create a new use case for a project with detailed specifications. Returns created use case with ID.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "title": {
+          "type": "string",
+          "description": "Use case title",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed use case description"
+        },
+        "category": {
+          "type": "string",
+          "description": "Use case category"
+        },
+        "goal": {
+          "type": "string",
+          "description": "Primary goal of this use case"
+        },
+        "roles": {
+          "type": "array",
+          "description": "User roles involved in this use case",
+          "items": {"type": "string"}
+        },
+        "requirements": {
+          "type": "array",
+          "description": "List of requirements",
+          "items": {"type": "string"}
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "description": "Acceptance criteria for this use case",
+          "items": {"type": "string"}
+        }
+      },
+      "required": ["project_id", "title", "description", "category", "roles", "requirements", "acceptance_criteria"]
+    },
+    "action": {
+      "type": "insert",
+      "table": "use_cases",
+      "values": {
+        "project_id": "{{project_id}}",
+        "title": "{{title}}",
+        "description": "{{description}}",
+        "category": "{{category}}",
+        "goal": "{{goal}}",
+        "roles": "{{roles}}",
+        "requirements": "{{requirements}}",
+        "acceptance_criteria": "{{acceptance_criteria}}"
+      },
+      "returning": ["id", "title", "description", "category", "goal"]
+    }
+  },
+  {
+    "name": "get-project-messages",
+    "description": "List messages for a specific project with filtering by type and sender. Returns detailed message history.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "message_type": {
+          "type": "string",
+          "description": "Filter by message type"
+        },
+        "sender": {
+          "type": "string",
+          "description": "Filter by sender"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Number of messages to return",
+          "default": 50,
+          "maximum": 200
+        },
+        "offset": {
+          "type": "number",
+          "description": "Number of messages to skip",
+          "default": 0
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "select",
+      "table": "messages",
+      "columns": ["id", "content", "sender", "timestamp", "type", "url", "action_button", "rejection_reason"],
+      "advancedFilters": [
+        {"column": "project_id", "operation": "eq", "value": "{{project_id}}"},
+        {"column": "type", "operation": "eq", "value": "{{message_type}}"},
+        {"column": "sender", "operation": "eq", "value": "{{sender}}"}
+      ],
+      "orderBy": [{"column": "timestamp", "direction": "desc"}],
+      "limit": "{{limit}}",
+      "offset": "{{offset}}"
+    }
+  },
+  {
+    "name": "create-project-message",
+    "description": "Create a new message in a project conversation. Returns created message with ID and timestamp.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        },
+        "content": {
+          "type": "string",
+          "description": "Message content"
+        },
+        "sender": {
+          "type": "string",
+          "description": "Message sender identifier"
+        },
+        "type": {
+          "type": "string",
+          "description": "Message type (e.g., 'user', 'system', 'ai', 'notification')"
+        },
+        "url": {
+          "type": "string",
+          "description": "Optional URL associated with message"
+        },
+        "action_button": {
+          "type": "string",
+          "description": "Optional action button text"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional message metadata"
+        }
+      },
+      "required": ["project_id", "content", "sender", "type"]
+    },
+    "action": {
+      "type": "insert",
+      "table": "messages",
+      "values": {
+        "project_id": "{{project_id}}",
+        "content": "{{content}}",
+        "sender": "{{sender}}",
+        "type": "{{type}}",
+        "url": "{{url}}",
+        "action_button": "{{action_button}}",
+        "metadata": "{{metadata}}",
+        "user_id": "auth.uid()",
+        "timestamp": "now()"
+      },
+      "returning": ["id", "content", "sender", "type", "timestamp", "url"]
+    }
+  },
+  {
+    "name": "list-todos",
+    "description": "⚠️ SECURITY WARNING: This table has no RLS - returns ALL todos. List todos with filtering by status and priority.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Filter by todo status",
+          "enum": ["pending", "in_progress", "completed"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Filter by priority level",
+          "enum": ["low", "medium", "high"]
+        },
+        "limit": {
+          "type": "number",
+          "description": "Number of todos to return",
+          "default": 20,
+          "maximum": 100
+        }
+      }
+    },
+    "action": {
+      "type": "select",
+      "table": "todos",
+      "columns": ["id", "title", "due_date", "status", "priority", "created_at"],
+      "advancedFilters": [
+        {"column": "status", "operation": "eq", "value": "{{status}}"},
+        {"column": "priority", "operation": "eq", "value": "{{priority}}"}
+      ],
+      "orderBy": [{"column": "due_date", "direction": "asc"}],
+      "limit": "{{limit}}"
+    }
+  },
+  {
+    "name": "create-todo",
+    "description": "⚠️ SECURITY WARNING: This table has no RLS. Create a new todo item with title, due date, status, and priority.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Todo title",
+          "maxLength": 200
+        },
+        "due_date": {
+          "type": "string",
+          "description": "Due date in YYYY-MM-DD format",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "description": "Todo status",
+          "enum": ["pending", "in_progress", "completed"],
+          "default": "pending"
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level",
+          "enum": ["low", "medium", "high"],
+          "default": "medium"
+        }
+      },
+      "required": ["title", "due_date"]
+    },
+    "action": {
+      "type": "insert",
+      "table": "todos",
+      "values": {
+        "title": "{{title}}",
+        "due_date": "{{due_date}}",
+        "status": "{{status}}",
+        "priority": "{{priority}}",
+        "created_at": "now()"
+      },
+      "returning": ["id", "title", "due_date", "status", "priority", "created_at"]
+    }
+  },
+  {
+    "name": "list-leads",
+    "description": "⚠️ SECURITY WARNING: This table has no RLS - returns ALL leads. List sales leads with filtering by status.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Filter by lead status",
+          "enum": ["new", "contacted", "qualified", "proposal", "negotiation", "closed"]
+        },
+        "limit": {
+          "type": "number",
+          "description": "Number of leads to return",
+          "default": 20,
+          "maximum": 100
+        }
+      }
+    },
+    "action": {
+      "type": "select",
+      "table": "leads",
+      "columns": ["id", "name", "status", "value", "created_at"],
+      "advancedFilters": [
+        {"column": "status", "operation": "eq", "value": "{{status}}"}
+      ],
+      "orderBy": [{"column": "value", "direction": "desc"}],
+      "limit": "{{limit}}"
+    }
+  },
+  {
+    "name": "list-expenses",
+    "description": "⚠️ SECURITY WARNING: This table has no RLS - returns ALL expenses. List expenses with filtering by status and category.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Filter by expense status",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "category": {
+          "type": "string",
+          "description": "Filter by expense category",
+          "enum": ["meals", "travel", "supplies", "software", "events", "other"]
+        },
+        "limit": {
+          "type": "number",
+          "description": "Number of expenses to return",
+          "default": 20,
+          "maximum": 100
+        }
+      }
+    },
+    "action": {
+      "type": "select",
+      "table": "expenses",
+      "columns": ["id", "description", "amount", "date", "status", "category", "created_at"],
+      "advancedFilters": [
+        {"column": "status", "operation": "eq", "value": "{{status}}"},
+        {"column": "category", "operation": "eq", "value": "{{category}}"}
+      ],
+      "orderBy": [{"column": "date", "direction": "desc"}],
+      "limit": "{{limit}}"
+    }
+  },
+  {
+    "name": "get-project-analytics",
+    "description": "Get comprehensive analytics for a specific project including version count, use case count, and message activity.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "description": "UUID of the project"
+        }
+      },
+      "required": ["project_id"]
+    },
+    "action": {
+      "type": "select",
+      "table": "projects",
+      "columns": [
+        "id",
+        "name", 
+        "current_version",
+        "created_at",
+        "last_updated",
+        "versions(count)",
+        "use_cases(count)",
+        "messages(count)"
+      ],
+      "filters": {"id": "{{project_id}}"},
+      "single": true
+    }
+  },
+  {
+    "name": "search-projects-and-use-cases",
+    "description": "Search across projects and use cases using text matching. Returns matching records with relevance.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "search_term": {
+          "type": "string",
+          "description": "Search term to match against names, descriptions, and content",
+          "minLength": 2
+        },
+        "limit": {
+          "type": "number",
+          "description": "Maximum results to return",
+          "default": 20,
+          "maximum": 50
+        }
+      },
+      "required": ["search_term"]
+    },
+    "action": {
+      "type": "select",
+      "table": "projects",
+      "columns": ["id", "name", "description", "current_version", "last_updated"],
+      "orConditions": [
+        {"conditions": "name.ilike.%{{search_term}}%,description.ilike.%{{search_term}}%"}
+      ],
+      "orderBy": [{"column": "last_updated", "direction": "desc"}],
+      "limit": "{{limit}}"
+    }
+  },
+  {
+    "name": "get-dashboard-summary",
+    "description": "Get overall dashboard summary with counts of projects, todos, leads, and expenses for the authenticated user.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dummy": {
+          "type": "string",
+          "description": "Dummy parameter",
+          "default": "summary"
+        }
+      }
+    },
+    "action": {
+      "type": "select",
+      "table": "projects",
+      "columns": ["id", "name"],
+      "count": "exact",
+      "limit": 1
+    }
+  }
+] 
+}
