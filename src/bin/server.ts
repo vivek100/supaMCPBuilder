@@ -23,12 +23,13 @@ program
   .requiredOption('--anon-key <key>', 'Supabase anonymous key')
   .requiredOption('--email <email>', 'User email for authentication')
   .requiredOption('--password <password>', 'User password for authentication')
-  .option('--config-path <path>', 'Path to configuration JSON file')
-  .option('--config-json <json>', 'Inline JSON configuration (alternative to --config-path)')
-  .option('--tools-json <json>', 'Inline JSON tools configuration (shorthand for simple tool definitions)')
-  .option('--tools-json-base64 <base64>', 'Base64 encoded inline JSON tools configuration')
+  .option('--config-path <path>', 'Path to configuration JSON file (optional, overrides database config)')
+  .option('--config-json <json>', 'Inline JSON configuration (optional, overrides database config)')
+  .option('--tools-json <json>', 'Inline JSON tools configuration (optional, overrides database config)')
+  .option('--tools-json-base64 <base64>', 'Base64 encoded inline JSON tools configuration (optional, overrides database config)')
   .option('--port <port>', 'Port for HTTP transport (default: stdio)', parseInt)
   .option('--verbose', 'Enable verbose logging')
+  .addHelpText('after', `\nIf no configuration is provided via --config-path, --config-json, --tools-json, or --tools-json-base64,\nthe server will automatically load the latest active configuration from the 'tool_configurations' table in your Supabase database after authentication.\n`)
   .parse();
 
 const options = program.opts();
@@ -121,7 +122,7 @@ async function main() {
           ? 'Inline tools JSON'
           : options.toolsJsonBase64
             ? 'Base64 encoded tools JSON'
-            : 'Using sample configuration';
+            : 'Database: tool_configurations table (default)';
     
     console.log(chalk.gray('   Config:'), configSource);
     console.log();

@@ -25,7 +25,7 @@ export class SupaMCPServer {
   /**
    * Initialize the server with authentication and configuration
    */
-  async initialize(config?: SupaMCPConfig, configPath?: string): Promise<void> {
+  async initialize(config?: SupaMCPConfig, configPath?: string, supabaseClientOverride?: any): Promise<void> {
     try {
       console.log('🚀 Initializing SupaMCP Server...');
 
@@ -39,7 +39,8 @@ export class SupaMCPServer {
       } else if (configPath) {
         this.config = await ConfigLoader.loadFromFile(configPath);
       } else {
-        throw new Error('Either config or configPath must be provided');
+        // Load from database if nothing else provided
+        this.config = await ConfigLoader.loadFromDatabase(supabaseClient);
       }
 
       // 3. Register default system tools first
@@ -370,12 +371,14 @@ export async function startSupaMCPServer(args: CLIArgs): Promise<SupaMCPServer> 
 
   const server = new SupaMCPServer(authConfig);
 
-  let config: SupaMCPConfig;
+  let config: SupaMCPConfig | undefined = undefined;
+  let configPath: string | undefined = undefined;
 
   // Load configuration
   try {
     if (args.configPath) {
       config = await ConfigLoader.loadFromFile(args.configPath);
+      configPath = args.configPath;
     } else if (args.configJson) {
       config = await ConfigLoader.loadFromInlineJson(args.configJson);
     } else if (args.toolsJson) {
@@ -387,16 +390,13 @@ export async function startSupaMCPServer(args: CLIArgs): Promise<SupaMCPServer> 
       } catch (error) {
         throw new Error(`Failed to decode Base64 tools configuration: ${(error as Error).message}`);
       }
-    } else {
-      // Default to sample config if no other config is provided
-      config = ConfigLoader.createSampleConfig();
-    }
+    } // else: config remains undefined, will be loaded from DB
   } catch (error) {
     throw new Error(`Failed to load configuration: ${(error as Error).message}`);
   }
 
   // Initialize and start server
-  await server.initialize(config);
+  await server.initialize(config, configPath);
   await server.start();
 
   // Setup graceful shutdown

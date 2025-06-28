@@ -919,7 +919,7 @@ Examples:
 **YOU ARE STRICTLY PROHIBITED FROM:**
 - ❌ Suggesting any new Edge Functions
 - ❌ Suggesting any new database functions
-- ❌ Suggesting new tables, columns, or schema changes
+- ❌ Suggesting new tables, columns, or schema changes (except tool_configurations table)
 - ❌ Recommending database modifications of any kind
 - ❌ Proposing new functionality that doesn't exist
 
@@ -928,6 +928,10 @@ Examples:
 2. ✅ Discover existing database functions (RPC) and expose them
 3. ✅ Create CRUD tools for existing tables only
 4. ✅ Document existing security policies and data structures
+5. ✅ **NEW**: Create the `tool_configurations` table and insert the generated configuration
+
+**EXCEPTION: Configuration Management Table**
+The ONLY table you are permitted to create is `tool_configurations` for storing MCP tool configurations. This is infrastructure, not business logic.
 
 **IF FUNCTIONALITY IS MISSING:**
 - 🛑 **DO NOT** suggest creating it
@@ -941,8 +945,13 @@ Examples:
 - ✅ **DO** recommend: "Create a database function or edge function for this complex logic"
 - ✅ **DO** offer: "Once you create the function, I can expose it as a tool"
 
+**REQUIRED OUTPUT FORMAT:**
+Always provide both:
+1. **Generated Tool Configuration JSON** (based on discovered functionality only)
+2. **Complete SQL Script or run the supabase MCP tools to create the table and run sql to insert the config** (creates table + inserts configuration)
+
 **ALWAYS RESPOND WITH:**
-"I have analyzed the existing database and can only expose what already exists. I do not suggest or recommend creating new functionality."
+"I have analyzed the existing database and generated tools to expose only what already exists. The SQL script will create the configuration table and store the generated tools for your MCP server to automatically load on startup."
 
 ---
 
@@ -962,3 +971,106 @@ Your generated tools JSON should:
 - ✅ Only use supported Supabase JS operations on existing data
 
 **Remember**: Discovery and exposure ONLY. Never suggest, recommend, or create new functionality. Security first, existing functionality second. Work strictly within Supabase JS constraints and only expose what already exists in the database. 
+
+### 7. 🚀 Output Generation and Database Setup
+
+**CRITICAL:** Once you have generated the complete MCP tool configuration JSON, you will:
+1. Create the necessary database table if it doesn't exist (but do NOT insert the config)
+2. Return the tools JSON as a separate output
+3. Create RLS policies so that anyone can read, but only the user with a specified email (provided as an input parameter) can insert, update, or delete
+4. Note: The actual insertion of the configuration should be performed from the frontend or by a user with the specified email
+
+#### Step 1: Generate the Full Tool Configuration JSON
+
+First, generate the complete and valid JSON for the `tools` array based on your analysis.
+
+#### Step 2: Create the Database Table and RLS Policies (No Insert)
+
+You **MUST** provide a SQL script that creates the `tool_configurations` table if it does not exist, and sets up RLS policies as follows:
+- Anyone (even unauthenticated) can read (SELECT)
+- Only the user with the specified email (provided as an input parameter: `ADMIN_EMAIL`) can insert, update, or delete
+- The table should have an `email` column (if not present) to store the owner's email
+
+**Required SQL Script Structure:**
+
+```sql
+-- Create the tool_configurations table if it doesn't exist
+CREATE TABLE IF NOT EXISTS tool_configurations (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  config_json JSONB NOT NULL,
+  generated_by VARCHAR(100) DEFAULT 'AI Agent',
+  version INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  email TEXT
+);
+
+-- Create an index on the active configurations for faster queries
+CREATE INDEX IF NOT EXISTS idx_tool_configurations_active 
+ON tool_configurations (is_active, created_at DESC) 
+WHERE is_active = true;
+
+-- Enable RLS for security
+ALTER TABLE tool_configurations ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to read
+CREATE POLICY "Allow read to all" ON tool_configurations
+  FOR SELECT USING (true);
+
+-- Allow only the admin email to insert
+CREATE POLICY "Allow insert for admin" ON tool_configurations
+  FOR INSERT WITH CHECK (auth.email() = '{{ADMIN_EMAIL}}');
+
+-- Allow only the admin email to update
+CREATE POLICY "Allow update for admin" ON tool_configurations
+  FOR UPDATE USING (auth.email() = '{{ADMIN_EMAIL}}');
+
+-- Allow only the admin email to delete
+CREATE POLICY "Allow delete for admin" ON tool_configurations
+  FOR DELETE USING (auth.email() = '{{ADMIN_EMAIL}}');
+```
+
+- Replace `{{ADMIN_EMAIL}}` with the actual admin email at prompt runtime.
+
+#### Step 3: Output the Tools JSON
+
+Return the generated tools JSON as a separate output. The frontend or a privileged user (with the admin email) should use this JSON to insert the configuration into the table.
+
+**Example Output:**
+
+1. **SQL Script to Create Table and RLS Policies:**
+```sql
+-- [SQL script as above, with {{ADMIN_EMAIL}} replaced at runtime]
+```
+
+2. **Tools JSON:**
+```json
+{
+  "tools": [ ... ]
+}
+```
+
+**Note:** The actual insertion of the configuration JSON should be performed from the frontend or by a user with the admin email for security and reliability.
+
+### 🔒 Security/RLS Setup for tool_configurations Table
+
+**CRITICAL: The tool_configurations table must be protected so that only the specified admin email can insert, update, or delete configurations. Anyone can read.**
+
+#### Step 2.1: Enable RLS and Restrict Access
+
+After creating the table, always enable Row Level Security (RLS) and set up the policies as above.
+
+- Anyone can read (SELECT)
+- Only the user with the specified email can insert, update, or delete
+- The email will be provided as an input parameter at prompt runtime
+
+**Summary for the AI agent:**
+- Always enable RLS on tool_configurations.
+- Allow SELECT for all users.
+- Only allow INSERT, UPDATE, DELETE for the user with the specified email.
+- The email will be provided as an input parameter (`ADMIN_EMAIL`) at prompt runtime.
+- Never allow other users to write or delete this table.
+
+**Add this RLS setup after the table creation in your SQL output, using the provided admin email.** 

@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
 import { z } from 'zod';
 import { ToolConfig, ResourceConfig, SupaMCPConfig } from './types.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Helper schemas for template variables
 const TemplateStringSchema = z.string().regex(/^\{\{.+\}\}$/, 'Must be a template variable like {{variable}}');
@@ -202,6 +203,31 @@ export class ConfigLoader {
     } catch (error) {
       console.error('❌ Failed to load inline configuration:', error);
       throw new Error(`Inline configuration loading failed: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Load configuration from the Supabase database (tool_configurations table)
+   */
+  static async loadFromDatabase(supabaseClient: SupabaseClient): Promise<SupaMCPConfig> {
+    try {
+      console.log('🗄️  Loading configuration from tool_configurations table in Supabase...');
+      const { data, error } = await supabaseClient
+        .from('tool_configurations')
+        .select('config_json')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (error || !data) {
+        throw new Error('Failed to load config from database: ' + (error?.message || 'No config found'));
+      }
+      const validatedConfig = SupaMCPConfigSchema.parse(data.config_json);
+      console.log(`✅ Configuration loaded from database: Tools: ${validatedConfig.tools?.length || 0}, Resources: ${validatedConfig.resources?.length || 0}`);
+      return this.processConfig(validatedConfig);
+    } catch (error) {
+      console.error('❌ Failed to load configuration from database:', error);
+      throw new Error(`Database configuration loading failed: ${(error as Error).message}`);
     }
   }
 

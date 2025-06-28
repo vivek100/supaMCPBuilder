@@ -1,5 +1,4 @@
-{
-  "tools": [
+[
   {
     "name": "get-project-details",
     "description": "Fetch complete project details by project ID. Returns project info including current version, status, and metadata.",
@@ -701,4 +700,3 @@
     }
   }
 ] 
-}

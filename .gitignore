@@ -100,6 +100,5 @@ test-results/
 playwright-report/
 test-results.xml
 
-# docs
-examples/
-frontend/
+# Examples and documentation are included in the package
+# (removed from .gitignore to allow publishing)
